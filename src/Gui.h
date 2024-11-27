@@ -10,5 +10,10 @@ int maxdir;
 int symbol;
 int x;
 int y;
-void LCDloop(bool stopped, int counter);
+void guiSetup();
+void LCDloop(bool button, int counter);
+bool ifStopped();
+private:
+bool stopped;
+bool buttonFlag;
 };

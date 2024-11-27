@@ -1,14 +1,13 @@
 #include <Arduino.h>
 #include <RotaryEncoder.h>
-#include <hardware/clocks.h>
 #include <hardware/pio.h>
+#include <array>
 
-//-------------------------------------------------------------------
-// Servo class methods
-RotaryEncoder* RotaryEncoder::instance = nullptr;
-RotaryEncoder* RotaryEncoder::instance2 = nullptr;
-RotaryEncoder* RotaryEncoder::instance3= nullptr;
-RotaryEncoder* RotaryEncoder::instance4 = nullptr;
+std::array<int, RotaryEncoder::maxEncoders> RotaryEncoder::DTpins = { -1 }; // Initialize all pins to -1 (unused)
+std::array<int, RotaryEncoder::maxEncoders> RotaryEncoder::CLKpins = { -1 }; // Initialize all pins to -1 (unused)
+std::array<RotaryEncoder*, RotaryEncoder::maxEncoders> RotaryEncoder::instances = { nullptr }; // Initialize all pointers to nullptr
+
+size_t RotaryEncoder::encoderCount = 0;
 
 int counterWrap(int counter,int mini,int maxi){
     if (counter < mini){
@@ -23,38 +22,31 @@ int counterWrap(int counter,int mini,int maxi){
 }
 
 void RotaryEncoder::InterruptHandler(uint gpio, uint32_t events){
-    Serial.print(gpio);
-    Serial.print("  ");
-    if (instance){
-        Serial.println("instance1");
+    for (int i = 0; i < encoderCount; i++){
+        if (gpio == CLKpins[i]){
+            instances[i]->CLKInterruptFunc();
+            return;
+        }
+        else if (gpio == DTpins[i]){
+            instances[i]->DTInterruptFunc();
+            return;
+        }
     }
-    if (instance2){ 
-        Serial.println("instance2");
-    }
-    /*
-    if (instance) {
-        instance -> InterruptHandler1(gpio,events);
-    };
-        if (instance2) {
-        instance2 -> InterruptHandler1(gpio,events);
-    };
-        if (instance3) {
-        instance3 -> InterruptHandler1(gpio,events);
-    };
-        if (instance4) {
-        instance4 -> InterruptHandler1(gpio,events);
-    };*/
 };
-void RotaryEncoder::InterruptHandler1(uint gpio, uint32_t events){
-    if (gpio == _DT_PIN){
-        DTInterruptFunc(gpio,events);
-    }
-    else{
-        CLKInterruptFunc(gpio,events);
-    }
-    
-};
-void RotaryEncoder::DTInterruptFunc(uint gpio, uint32_t events) {
+void interruptSetup(uint gpio){
+    gpio_init(gpio);
+    gpio_set_dir(gpio, GPIO_IN);
+
+    gpio_set_irq_enabled_with_callback(
+        gpio,
+        GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+        true,
+        &RotaryEncoder::InterruptHandler
+    );
+}
+
+
+void RotaryEncoder::DTInterruptFunc() {
     Serial.println("DTINTER");
     if (!lastDTorCLK){
     lastDTorCLK = true;
@@ -76,7 +68,7 @@ void RotaryEncoder::DTInterruptFunc(uint gpio, uint32_t events) {
     lastCLK = currCLK;
     };
 };
-void RotaryEncoder::CLKInterruptFunc(uint gpio, uint32_t events) {
+void RotaryEncoder::CLKInterruptFunc() {
     Serial.println("CLKINTER");
 
     if (lastDTorCLK){
@@ -132,53 +124,36 @@ RotaryEncoder::RotaryEncoder() {
     lastCLK = true;
     lastDT = true;
     lastDTorCLK = false; //arbitrary
-    instance = this;
-    
-    if (!(instance == nullptr)){
-        instance = this;
-    }
-    else if (!(instance2 == nullptr)){
-        instance2 = this;
-    }
-    else if (!(instance3 == nullptr)){
-        instance3 = this;
-    }
-    else if (!(instance4 == nullptr)){
-        instance4 = this;
-    }
 
     minCounter = DEFAULT_MIN_COUNTER;
     maxCounter = DEFAULT_MAX_COUNTER;
 
 }
 
-RotaryEncoder::~RotaryEncoder() {
-    detach();
-}
+RotaryEncoder::~RotaryEncoder() {}
 
 void RotaryEncoder::attach(pin_size_t DT_PIN, pin_size_t CLK_PIN, pin_size_t SW_PIN) {
     _CLK_PIN = CLK_PIN;
     _DT_PIN = DT_PIN;
     _SW_PIN = SW_PIN;
-
-    gpio_init(_DT_PIN);
-    gpio_set_dir(_DT_PIN, GPIO_IN);
-
-    gpio_set_irq_enabled_with_callback(
-        _DT_PIN,
-        GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
-        true,
-        &RotaryEncoder::InterruptHandler
-    );
-
-    gpio_init(_CLK_PIN);
-    gpio_set_dir(_CLK_PIN, GPIO_IN);
-
-    gpio_set_irq_enabled_with_callback(
-        _CLK_PIN,
-        GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
-        true,
-        &RotaryEncoder::InterruptHandler
-    );
     
+    CLKpins[encoderCount] = CLK_PIN;
+    DTpins[encoderCount] = _DT_PIN;
+    instances[encoderCount] = this;
+    encoderCount++;
+    
+    pinMode(_SW_PIN, INPUT);
+
+    interruptSetup(_DT_PIN);
+    interruptSetup(_CLK_PIN);
+    
+}
+int RotaryEncoder::getCounter(){
+    return counter;
+}
+void RotaryEncoder::resetCounter(){
+    counter = 0;
+}
+bool RotaryEncoder::getButton(){
+    return !digitalRead(_SW_PIN);
 }

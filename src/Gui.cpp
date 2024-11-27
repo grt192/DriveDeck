@@ -80,36 +80,54 @@ void LCDsetup(){
   Gui::Gui(char ID, int newX, int newY){
         letter = ID;
         dir = 0;
-        maxdir = 39;
+        maxdir = 19;
         symbol = 0;
         x = newX;
         y = newY;
+        
     };
-  void Gui::LCDloop(bool stopped, int counter){
+  void Gui::guiSetup(){
+    lcd.setCursor(x+0,y);
+    lcd.print(letter);
+  }
+  void Gui::LCDloop(bool button, int counter){
+    if (button){//pressed
+    if (buttonFlag == true){
+      stopped = !stopped;
+      buttonFlag = false;
+    } 
+  }
+  else{
+    buttonFlag = true;
+  }
+  
   if (stopped){
   symbol = 4;
+  
   }
   else{
   if (counter < 0){
     dir ++;
     dir %= maxdir;
-    symbol = dir / 10;
+    symbol = dir / 5;
   }
   else if (counter > 0){
     dir --;
     if (dir < 0){
       dir = maxdir;
     }
-    symbol = dir / 10;
+    symbol = dir / 5 ;
   }
   else {//stopped moving
     symbol = 5;
   }
   }
-  lcd.setCursor(x+0,y);
-  lcd.print(letter);
+
   lcd.setCursor(x+2,y);
   lcd.write(symbol);
   lcd.setCursor(x+4,y);
   lcd.print((String)abs(counter) + "  ");
 };
+bool Gui::ifStopped(){
+  return stopped;
+}
