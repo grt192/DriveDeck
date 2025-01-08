@@ -47,7 +47,7 @@ void interruptSetup(uint gpio){
 
 
 void RotaryEncoder::DTInterruptFunc() {
-    Serial.println("DTINTER");
+    //Serial.println("DTINTER");
     if (!lastDTorCLK){
     lastDTorCLK = true;
     currCLK = digitalRead(_CLK_PIN);
@@ -69,7 +69,7 @@ void RotaryEncoder::DTInterruptFunc() {
     };
 };
 void RotaryEncoder::CLKInterruptFunc() {
-    Serial.println("CLKINTER");
+    //Serial.println("CLKINTER");
 
     if (lastDTorCLK){
     lastDTorCLK = false;

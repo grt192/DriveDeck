@@ -12,8 +12,10 @@ int x;
 int y;
 void guiSetup();
 void LCDloop(bool button, int counter);
+void displayStuff();
 bool ifStopped();
 private:
-bool stopped;
+volatile bool stopped;
 bool buttonFlag;
+volatile int count;
 };
